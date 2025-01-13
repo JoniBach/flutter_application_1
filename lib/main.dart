@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:supabase_auth_ui/supabase_auth_ui.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -43,6 +45,7 @@ class _HomePageState extends State<HomePage> {
     AllReadingsPage(),
     AllInsightsPage(),
     DataPage(),
+    AuthPage(),
   ];
 
   void _onItemTapped(int index) {
@@ -76,12 +79,88 @@ class _HomePageState extends State<HomePage> {
             icon: Icon(Icons.data_usage),
             label: 'Data',
           ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person),
+            label: 'Auth',
+          ),
         ],
         currentIndex: _selectedIndex,
         selectedItemColor: Colors.blue,
         unselectedItemColor: Colors.grey,
         backgroundColor: Colors.white,
         onTap: _onItemTapped,
+      ),
+    );
+  }
+}
+
+class AuthPage extends StatelessWidget {
+  const AuthPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    // Retrieve the current user from Supabase
+    final user = Supabase.instance.client.auth.currentUser;
+
+    // If the user is logged in, show their auth info
+    if (user != null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('User Info')),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text('User ID: ${user.id}'),
+              Text('Email: ${user.email}'),
+              // Display additional metadata if available:
+              if (user.userMetadata != null)
+                ...user.userMetadata!.entries.map(
+                  (entry) => Text('${entry.key}: ${entry.value}'),
+                ),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: () async {
+                  await Supabase.instance.client.auth.signOut();
+                  // Optionally, trigger a rebuild or navigate away after sign-out.
+                },
+                child: const Text('Log Out'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // If not logged in, show the authentication UI.
+    return Scaffold(
+      appBar: AppBar(title: const Text('Authentication')),
+      body: Center(
+        child: FocusScope(
+          child: SupaEmailAuth(
+            // When running on web, no redirect is needed.
+            redirectTo: kIsWeb ? null : 'myapp://home',
+            onSignInComplete: (response) {
+              // You may want to trigger a UI refresh when sign-in completes.
+              // For example, if using a state management solution, update the state.
+            },
+            onSignUpComplete: (response) {
+              // Same as above for sign-up.
+            },
+            metadataFields: [
+              MetaDataField(
+                prefixIcon: const Icon(Icons.person),
+                label: 'Username',
+                key: 'username',
+                validator: (val) {
+                  if (val == null || val.isEmpty) {
+                    return 'Please enter something';
+                  }
+                  return null;
+                },
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
