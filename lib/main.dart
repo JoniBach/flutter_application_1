@@ -114,8 +114,11 @@ class TodayReadingsPage extends StatelessWidget {
             itemCount: readings.length,
             itemBuilder: ((context, index) {
               final reading = readings[index];
+              final createdAt = DateTime.parse(reading['created_at']);
+              final formattedDate =
+                  '${createdAt.day.toString().padLeft(2, '0')}/${createdAt.month.toString().padLeft(2, '0')}/${createdAt.year} ${createdAt.hour.toString().padLeft(2, '0')}:${createdAt.minute.toString().padLeft(2, '0')}';
               return ListTile(
-                title: Text('Reading ${reading['id']}'),
+                title: Text(formattedDate),
                 subtitle: Text('Temperature: ${reading['temperature']}, '
                     'Humidity: ${reading['humidity']}, '
                     'Pressure: ${reading['pressure']}, '
@@ -150,8 +153,11 @@ class AllReadingsPage extends StatelessWidget {
             itemCount: readings.length,
             itemBuilder: ((context, index) {
               final reading = readings[index];
+              final createdAt = DateTime.parse(reading['created_at']);
+              final formattedDate =
+                  '${createdAt.day.toString().padLeft(2, '0')}/${createdAt.month.toString().padLeft(2, '0')}/${createdAt.year} ${createdAt.hour.toString().padLeft(2, '0')}:${createdAt.minute.toString().padLeft(2, '0')}';
               return ListTile(
-                title: Text('Reading ${reading['id']}'),
+                title: Text(formattedDate),
                 subtitle: Text('Temperature: ${reading['temperature']}, '
                     'Humidity: ${reading['humidity']}, '
                     'Pressure: ${reading['pressure']}, '
@@ -277,11 +283,23 @@ class DataPage extends StatelessWidget {
                   LineChartBarData(
                     spots: spots,
                     isCurved: true,
-                    barWidth: 3,
+                    barWidth: 3, // Thickness of the line
                     color: Colors.blue,
                     belowBarData: BarAreaData(show: false),
-                    dotData: FlDotData(show: true),
-                  ),
+                    dotData: FlDotData(
+                      show: true, // Set to false if you want to hide the spots
+                      checkToShowDot: (spot, barData) =>
+                          true, // Show all dots by default
+                      getDotPainter: (spot, percent, barData, index) {
+                        return FlDotCirclePainter(
+                          radius:
+                              2.0, // Set the radius to make the dots smaller
+                          color: Colors.blue, // Color of the dot
+                          strokeWidth: 0, // Width of the stroke around the dot
+                        );
+                      },
+                    ),
+                  )
                 ],
                 titlesData: FlTitlesData(
                   leftTitles: AxisTitles(
