@@ -5,6 +5,10 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:supabase_auth_ui/supabase_auth_ui.dart';
 
+// Create a global key for the ScaffoldMessenger.
+final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey =
+    GlobalKey<ScaffoldMessengerState>();
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -23,9 +27,10 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
+    return MaterialApp(
       title: 'Readings',
-      home: HomePage(),
+      scaffoldMessengerKey: scaffoldMessengerKey, // Use the global key here.
+      home: const HomePage(),
     );
   }
 }
@@ -40,11 +45,13 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   int _selectedIndex = 0;
 
+  // Updated pages list including the DevicesPage.
   static const List<Widget> _pages = <Widget>[
     TodayReadingsPage(),
     AllReadingsPage(),
     AllInsightsPage(),
     DataPage(),
+    DevicesPage(),
     AuthPage(),
   ];
 
@@ -80,6 +87,10 @@ class _HomePageState extends State<HomePage> {
             label: 'Data',
           ),
           BottomNavigationBarItem(
+            icon: Icon(Icons.devices),
+            label: 'Devices',
+          ),
+          BottomNavigationBarItem(
             icon: Icon(Icons.person),
             label: 'Auth',
           ),
@@ -94,15 +105,14 @@ class _HomePageState extends State<HomePage> {
   }
 }
 
+/// Displays authentication UI and user details.
 class AuthPage extends StatelessWidget {
   const AuthPage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    // Retrieve the current user from Supabase
     final user = Supabase.instance.client.auth.currentUser;
 
-    // If the user is logged in, show their auth info
     if (user != null) {
       return Scaffold(
         appBar: AppBar(title: const Text('User Info')),
@@ -112,16 +122,13 @@ class AuthPage extends StatelessWidget {
             children: [
               Text('User ID: ${user.id}'),
               Text('Email: ${user.email}'),
-              // Display additional metadata if available:
               if (user.userMetadata != null)
-                ...user.userMetadata!.entries.map(
-                  (entry) => Text('${entry.key}: ${entry.value}'),
-                ),
+                ...user.userMetadata!.entries
+                    .map((entry) => Text('${entry.key}: ${entry.value}')),
               const SizedBox(height: 24),
               ElevatedButton(
                 onPressed: () async {
                   await Supabase.instance.client.auth.signOut();
-                  // Optionally, trigger a rebuild or navigate away after sign-out.
                 },
                 child: const Text('Log Out'),
               ),
@@ -131,20 +138,17 @@ class AuthPage extends StatelessWidget {
       );
     }
 
-    // If not logged in, show the authentication UI.
     return Scaffold(
       appBar: AppBar(title: const Text('Authentication')),
       body: Center(
         child: FocusScope(
           child: SupaEmailAuth(
-            // When running on web, no redirect is needed.
             redirectTo: kIsWeb ? null : 'myapp://home',
             onSignInComplete: (response) {
-              // You may want to trigger a UI refresh when sign-in completes.
-              // For example, if using a state management solution, update the state.
+              // Optionally trigger a UI refresh.
             },
             onSignUpComplete: (response) {
-              // Same as above for sign-up.
+              // Optionally trigger a UI refresh.
             },
             metadataFields: [
               MetaDataField(
@@ -166,6 +170,7 @@ class AuthPage extends StatelessWidget {
   }
 }
 
+/// Displays readings for today.
 class TodayReadingsPage extends StatelessWidget {
   const TodayReadingsPage({super.key});
 
@@ -191,21 +196,23 @@ class TodayReadingsPage extends StatelessWidget {
           final readings = snapshot.data!;
           return ListView.builder(
             itemCount: readings.length,
-            itemBuilder: ((context, index) {
+            itemBuilder: (context, index) {
               final reading = readings[index];
               final createdAt = DateTime.parse(reading['created_at']);
               final formattedDate =
                   '${createdAt.day.toString().padLeft(2, '0')}/${createdAt.month.toString().padLeft(2, '0')}/${createdAt.year} ${createdAt.hour.toString().padLeft(2, '0')}:${createdAt.minute.toString().padLeft(2, '0')}';
               return ListTile(
                 title: Text(formattedDate),
-                subtitle: Text('Temperature: ${reading['temperature']}, '
-                    'Humidity: ${reading['humidity']}, '
-                    'Pressure: ${reading['pressure']}, '
-                    'Gas Resistance: ${reading['gas_resistance']}, '
-                    'Altitude: ${reading['altitude']}, '
-                    'IIR Filter Coefficient: ${reading['iir_filter_coefficient']}'),
+                subtitle: Text(
+                  'Temperature: ${reading['temperature']}, '
+                  'Humidity: ${reading['humidity']}, '
+                  'Pressure: ${reading['pressure']}, '
+                  'Gas Resistance: ${reading['gas_resistance']}, '
+                  'Altitude: ${reading['altitude']}, '
+                  'IIR Filter Coefficient: ${reading['iir_filter_coefficient']}',
+                ),
               );
-            }),
+            },
           );
         },
       ),
@@ -213,6 +220,7 @@ class TodayReadingsPage extends StatelessWidget {
   }
 }
 
+/// Displays all readings.
 class AllReadingsPage extends StatelessWidget {
   const AllReadingsPage({super.key});
 
@@ -230,21 +238,23 @@ class AllReadingsPage extends StatelessWidget {
           final readings = snapshot.data!;
           return ListView.builder(
             itemCount: readings.length,
-            itemBuilder: ((context, index) {
+            itemBuilder: (context, index) {
               final reading = readings[index];
               final createdAt = DateTime.parse(reading['created_at']);
               final formattedDate =
                   '${createdAt.day.toString().padLeft(2, '0')}/${createdAt.month.toString().padLeft(2, '0')}/${createdAt.year} ${createdAt.hour.toString().padLeft(2, '0')}:${createdAt.minute.toString().padLeft(2, '0')}';
               return ListTile(
                 title: Text(formattedDate),
-                subtitle: Text('Temperature: ${reading['temperature']}, '
-                    'Humidity: ${reading['humidity']}, '
-                    'Pressure: ${reading['pressure']}, '
-                    'Gas Resistance: ${reading['gas_resistance']}, '
-                    'Altitude: ${reading['altitude']}, '
-                    'IIR Filter Coefficient: ${reading['iir_filter_coefficient']}'),
+                subtitle: Text(
+                  'Temperature: ${reading['temperature']}, '
+                  'Humidity: ${reading['humidity']}, '
+                  'Pressure: ${reading['pressure']}, '
+                  'Gas Resistance: ${reading['gas_resistance']}, '
+                  'Altitude: ${reading['altitude']}, '
+                  'IIR Filter Coefficient: ${reading['iir_filter_coefficient']}',
+                ),
               );
-            }),
+            },
           );
         },
       ),
@@ -252,6 +262,7 @@ class AllReadingsPage extends StatelessWidget {
   }
 }
 
+/// Displays insights.
 class AllInsightsPage extends StatelessWidget {
   const AllInsightsPage({super.key});
 
@@ -270,20 +281,21 @@ class AllInsightsPage extends StatelessWidget {
           final insights = snapshot.data!;
           return ListView.builder(
             itemCount: insights.length,
-            itemBuilder: ((context, index) {
+            itemBuilder: (context, index) {
               final insight = insights[index];
               return ListTile(
                 title: Text('Insight ${insight['id']}'),
                 subtitle: Text(
-                    'Air Quality Index: ${insight['air_quality_index']}, '
-                    'Thermal Comfort Index: ${insight['thermal_comfort_index']}, '
-                    'Mold Risk Index: ${insight['mold_risk_index']}, '
-                    'Building Stress Index: ${insight['building_stress_index']}, '
-                    'Pressure Variance: ${insight['pressure_variance']}, '
-                    'VOC Exposure Score: ${insight['voc_exposure_score']}, '
-                    'Sensor Health Status: ${insight['sensor_health_status']}'),
+                  'Air Quality Index: ${insight['air_quality_index']}, '
+                  'Thermal Comfort Index: ${insight['thermal_comfort_index']}, '
+                  'Mold Risk Index: ${insight['mold_risk_index']}, '
+                  'Building Stress Index: ${insight['building_stress_index']}, '
+                  'Pressure Variance: ${insight['pressure_variance']}, '
+                  'VOC Exposure Score: ${insight['voc_exposure_score']}, '
+                  'Sensor Health Status: ${insight['sensor_health_status']}',
+                ),
               );
-            }),
+            },
           );
         },
       ),
@@ -291,6 +303,7 @@ class AllInsightsPage extends StatelessWidget {
   }
 }
 
+/// Displays data charts using fl_chart.
 class DataPage extends StatelessWidget {
   const DataPage({super.key});
 
@@ -326,21 +339,18 @@ class DataPage extends StatelessWidget {
 
   Widget _buildLineChart(String title, List readings, String field) {
     List<FlSpot> spots = [];
-    List<DateTime> dates = []; // To store the corresponding dates
+    List<DateTime> dates = [];
 
     for (var i = 0; i < readings.length; i++) {
       var value = readings[i][field];
-      var dateStr =
-          readings[i]['created_at']; // Assuming 'created_at' has the timestamp
+      var dateStr = readings[i]['created_at'];
 
-      // Parse the date and convert value to double if necessary
       if (value == null || dateStr == null) continue;
       if (value is int) value = value.toDouble();
 
       if (value is double) {
         spots.add(FlSpot(i.toDouble(), value));
-        dates.add(
-            DateTime.parse(dateStr)); // Parse the date string into DateTime
+        dates.add(DateTime.parse(dateStr));
       }
     }
 
@@ -362,19 +372,17 @@ class DataPage extends StatelessWidget {
                   LineChartBarData(
                     spots: spots,
                     isCurved: true,
-                    barWidth: 3, // Thickness of the line
+                    barWidth: 3,
                     color: Colors.blue,
                     belowBarData: BarAreaData(show: false),
                     dotData: FlDotData(
-                      show: true, // Set to false if you want to hide the spots
-                      checkToShowDot: (spot, barData) =>
-                          true, // Show all dots by default
+                      show: true,
+                      checkToShowDot: (spot, barData) => true,
                       getDotPainter: (spot, percent, barData, index) {
                         return FlDotCirclePainter(
-                          radius:
-                              2.0, // Set the radius to make the dots smaller
-                          color: Colors.blue, // Color of the dot
-                          strokeWidth: 0, // Width of the stroke around the dot
+                          radius: 2.0,
+                          color: Colors.blue,
+                          strokeWidth: 0,
                         );
                       },
                     ),
@@ -399,7 +407,6 @@ class DataPage extends StatelessWidget {
                       showTitles: true,
                       reservedSize: 40,
                       getTitlesWidget: (value, meta) {
-                        // Convert index to date for the x-axis
                         int index = value.toInt();
                         if (index < 0 || index >= dates.length)
                           return const SizedBox();
@@ -407,7 +414,6 @@ class DataPage extends StatelessWidget {
                         DateTime date = dates[index];
                         String formattedDate =
                             '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year.toString().substring(2)}';
-
                         return Text(
                           formattedDate,
                           style: const TextStyle(fontSize: 10),
@@ -435,6 +441,180 @@ class DataPage extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// DevicesPage lists all devices from the "devices" table and includes an Add Device button.
+class DevicesPage extends StatelessWidget {
+  const DevicesPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Devices')),
+        body: const Center(
+          child: Text('You need to be logged in to view devices.'),
+        ),
+      );
+    }
+
+    final future = Supabase.instance.client.from('devices').select();
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('Devices')),
+      body: FutureBuilder(
+        future: future,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snapshot.hasError) {
+            return Center(child: Text('Error: ${snapshot.error}'));
+          }
+          if (!snapshot.hasData) {
+            return const Center(child: Text("No devices found."));
+          }
+
+          final devices = snapshot.data as List<dynamic>;
+          return ListView.builder(
+            itemCount: devices.length,
+            itemBuilder: (context, index) {
+              final device = devices[index];
+              return ListTile(
+                leading: const Icon(Icons.devices),
+                title: Text(device['location']),
+                subtitle: Text('ID: ${device['id']}'),
+              );
+            },
+          );
+        },
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          // Navigate to the AddDevicePage.
+          Navigator.of(context).push(
+            MaterialPageRoute(builder: (context) => const AddDevicePage()),
+          );
+        },
+        child: const Icon(Icons.add),
+      ),
+    );
+  }
+}
+
+/// AddDevicePage provides a form to add a new device to the "devices" table.
+class AddDevicePage extends StatefulWidget {
+  const AddDevicePage({super.key});
+
+  @override
+  State<AddDevicePage> createState() => _AddDevicePageState();
+}
+
+class _AddDevicePageState extends State<AddDevicePage> {
+  final _formKey = GlobalKey<FormState>();
+  final TextEditingController _locationController = TextEditingController();
+  final TextEditingController _macAddressController = TextEditingController();
+
+  bool _isSubmitting = false;
+
+  Future<void> _addDevice() async {
+    if (_formKey.currentState?.validate() != true) return;
+
+    setState(() {
+      _isSubmitting = true;
+    });
+
+    // Create a device map with the location and MAC address.
+    final deviceData = {
+      'location': _locationController.text,
+      'mac_address': _macAddressController.text,
+    };
+
+    // Insert the device data.
+    final response =
+        await Supabase.instance.client.from('devices').insert(deviceData);
+
+    setState(() {
+      _isSubmitting = false;
+    });
+
+    if (response.error != null) {
+      debugPrint("Insert error: ${response.error!.message}");
+      scaffoldMessengerKey.currentState?.showSnackBar(
+        SnackBar(content: Text('Error: ${response.error!.message}')),
+      );
+    } else {
+      debugPrint("Insert successful. Response: $response");
+      // Show success message.
+      scaffoldMessengerKey.currentState?.showSnackBar(
+        const SnackBar(content: Text('Device added successfully.')),
+      );
+      // Wait for one second so the user can see the snack bar.
+      await Future.delayed(const Duration(seconds: 1));
+      if (mounted) {
+        Navigator.of(context).pop(true);
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _locationController.dispose();
+    _macAddressController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Add Device')),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: _isSubmitting
+            ? const Center(child: CircularProgressIndicator())
+            : Form(
+                key: _formKey,
+                child: Column(
+                  children: [
+                    // Field for entering the device location.
+                    TextFormField(
+                      controller: _locationController,
+                      decoration: const InputDecoration(
+                        labelText: 'Location',
+                      ),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter a location';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    // Field for entering the MAC address.
+                    TextFormField(
+                      controller: _macAddressController,
+                      decoration: const InputDecoration(
+                        labelText: 'MAC Address',
+                      ),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter a MAC address';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 24),
+                    ElevatedButton(
+                      onPressed: _addDevice,
+                      child: const Text('Add Device'),
+                    ),
+                  ],
+                ),
+              ),
       ),
     );
   }
