@@ -303,7 +303,6 @@ class AllInsightsPage extends StatelessWidget {
   }
 }
 
-/// Displays data charts using fl_chart.
 class DataPage extends StatelessWidget {
   const DataPage({super.key});
 
@@ -338,21 +337,65 @@ class DataPage extends StatelessWidget {
   }
 
   Widget _buildLineChart(String title, List readings, String field) {
-    List<FlSpot> spots = [];
-    List<DateTime> dates = [];
+    Map<String, List<FlSpot>> macAddressSpots = {};
+    Map<String, List<DateTime>> macAddressDates = {};
+    Map<String, Color> macAddressColors = {};
 
-    for (var i = 0; i < readings.length; i++) {
-      var value = readings[i][field];
-      var dateStr = readings[i]['created_at'];
+    List<Color> availableColors = [
+      Colors.blue,
+      Colors.red,
+      Colors.green,
+      Colors.orange,
+      Colors.purple,
+      Colors.brown,
+    ];
 
-      if (value == null || dateStr == null) continue;
+    int colorIndex = 0;
+
+    for (var reading in readings) {
+      var value = reading[field];
+      var dateStr = reading['created_at'];
+      var macAddress = reading['mac_address'];
+
+      if (value == null || dateStr == null || macAddress == null) continue;
       if (value is int) value = value.toDouble();
 
       if (value is double) {
-        spots.add(FlSpot(i.toDouble(), value));
-        dates.add(DateTime.parse(dateStr));
+        macAddressSpots.putIfAbsent(macAddress, () => []);
+        macAddressDates.putIfAbsent(macAddress, () => []);
+        DateTime date = DateTime.parse(dateStr);
+        macAddressSpots[macAddress]!
+            .add(FlSpot(date.millisecondsSinceEpoch.toDouble(), value));
+        macAddressDates[macAddress]!.add(date);
+
+        if (!macAddressColors.containsKey(macAddress)) {
+          macAddressColors[macAddress] =
+              availableColors[colorIndex % availableColors.length];
+          colorIndex++;
+        }
       }
     }
+
+    List<LineChartBarData> lineBarsData = macAddressSpots.entries.map((entry) {
+      return LineChartBarData(
+        spots: entry.value,
+        isCurved: true,
+        barWidth: 3,
+        color: macAddressColors[entry.key],
+        belowBarData: BarAreaData(show: false),
+        dotData: FlDotData(
+          show: true,
+          checkToShowDot: (spot, barData) => true,
+          getDotPainter: (spot, percent, barData, index) {
+            return FlDotCirclePainter(
+              radius: 2.0,
+              color: macAddressColors[entry.key]!,
+              strokeWidth: 0,
+            );
+          },
+        ),
+      );
+    }).toList();
 
     return Padding(
       padding: const EdgeInsets.all(8.0),
@@ -368,26 +411,7 @@ class DataPage extends StatelessWidget {
             height: 300,
             child: LineChart(
               LineChartData(
-                lineBarsData: [
-                  LineChartBarData(
-                    spots: spots,
-                    isCurved: true,
-                    barWidth: 3,
-                    color: Colors.blue,
-                    belowBarData: BarAreaData(show: false),
-                    dotData: FlDotData(
-                      show: true,
-                      checkToShowDot: (spot, barData) => true,
-                      getDotPainter: (spot, percent, barData, index) {
-                        return FlDotCirclePainter(
-                          radius: 2.0,
-                          color: Colors.blue,
-                          strokeWidth: 0,
-                        );
-                      },
-                    ),
-                  )
-                ],
+                lineBarsData: lineBarsData,
                 titlesData: FlTitlesData(
                   leftTitles: AxisTitles(
                     sideTitles: SideTitles(
@@ -407,11 +431,8 @@ class DataPage extends StatelessWidget {
                       showTitles: true,
                       reservedSize: 40,
                       getTitlesWidget: (value, meta) {
-                        int index = value.toInt();
-                        if (index < 0 || index >= dates.length)
-                          return const SizedBox();
-
-                        DateTime date = dates[index];
+                        DateTime date =
+                            DateTime.fromMillisecondsSinceEpoch(value.toInt());
                         String formattedDate =
                             '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year.toString().substring(2)}';
                         return Text(
@@ -439,6 +460,25 @@ class DataPage extends StatelessWidget {
                 gridData: FlGridData(show: true),
               ),
             ),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8.0,
+            runSpacing: 4.0,
+            children: macAddressColors.entries.map((entry) {
+              return Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 12,
+                    height: 12,
+                    color: entry.value,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(entry.key),
+                ],
+              );
+            }).toList(),
           ),
         ],
       ),
